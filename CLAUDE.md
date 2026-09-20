@@ -62,7 +62,15 @@ All input is a single `keydown` listener that ignores everything except `KeyP` w
 
 ## Tunable constants (top of `game.js`)
 
-`COLS`, `ROWS`, `BLOCK`, `COLORS`, `LINE_SCORES`, initial `dropInterval`. If `COLS`/`ROWS`/`BLOCK` change, the `#board` canvas `width`/`height` in `index.html` must be updated to match (`COLS × BLOCK`, `ROWS × BLOCK`).
+`COLS`, `ROWS`, `BLOCK`, `THEMES` (visual skins; each entry replaces the old `COLORS` array with a 7-color palette plus board/grid colors — see "Visual themes / skins" below), `LINE_SCORES`, initial `dropInterval`. If `COLS`/`ROWS`/`BLOCK` change, the `#board` canvas `width`/`height` in `index.html` must be updated to match (`COLS × BLOCK`, `ROWS × BLOCK`).
+
+## Visual themes / skins
+
+- `THEMES` (`game.js`, top of file) replaces the old flat `COLORS` array. Each entry (`retro`, `neon`, `pastel`, `pixel`) has a Spanish `name`, a 7-entry `colors` array (same shape as old `COLORS`), `board`/`grid` background colors, an optional `ghostAlpha` override, and optional effect flags (`glow`, `rounded`, `pixelPattern`) consumed by `drawBlock()`.
+- `currentTheme` (top-level `let`) holds the active theme key, loaded from `localStorage['tetris:skin']` on startup (`loadThemeKey()`, wrapped in try/catch with an in-memory `'retro'` fallback) and persisted the same way in `applyTheme()`.
+- `drawBlock()` is theme-aware: it resolves the active theme (or accepts one via its optional last argument, resolved once per frame in `draw()`/`drawNext()`/`drawGrid()` rather than per cell) and applies `glow` (`ctx.shadowBlur`/`shadowColor`, always reset to `0`/`transparent` after use so it can't bleed into `drawGrid()` or later frames), `rounded` (`fillRoundedRect()`, using `ctx.roundRect` when available with a manual arc-based fallback), and `pixelPattern` (`drawPixelPattern()`, a checker overlay) — it remains the single shared primitive for both the board and next-piece canvases.
+- The `#board`/`#next-canvas` background color comes from `theme.board`, applied via `canvas.style.background`/`nextCanvas.style.background` in JS (`applyCanvasBackground()`) — not hardcoded in `style.css` — so it has one source of truth. `style.css` only adds `body[data-skin="..."]` rules for chrome (panel/accent colors, canvas border, box-shadow) that JS does not own.
+- The theme `<select>` (`#theme-select` in `index.html`'s `.panel`) calls `applyTheme()` on `change`, which updates `currentTheme`, persists it, sets `document.body.dataset.skin`, and calls `draw()`/`drawNext()` immediately (not just relying on the animation loop) so it applies live whether the game is running, paused, or over.
 
 ## Issue triage
 
