@@ -61,7 +61,9 @@ function loadScores() {
   try {
     const raw = localStorage.getItem(SCORES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    scoresCache = Array.isArray(parsed) ? parsed : [];
+    const arr = Array.isArray(parsed) ? parsed : [];
+    // Descarta entradas corruptas/manipuladas que no tengan una puntuación numérica.
+    scoresCache = arr.filter(e => e && typeof e === 'object' && Number.isFinite(e.score));
   } catch (e) {
     scoresCache = [];
   }
@@ -319,7 +321,16 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
-function setOverlayButtons({ leaderboard, summary, saveForm, start, restart, resetScores }) {
+// Única fuente de verdad para qué se muestra en cada modo del overlay,
+// para que los tres modos no puedan desincronizarse entre sí.
+const OVERLAY_MODES = {
+  start: { leaderboard: true, summary: true, saveForm: false, start: true, restart: false, resetScores: true },
+  gameover: { leaderboard: true, summary: true, saveForm: true, start: false, restart: true, resetScores: true },
+  pause: { leaderboard: false, summary: false, saveForm: false, start: false, restart: true, resetScores: false },
+};
+
+function setOverlayMode(mode, overrides) {
+  const { leaderboard, summary, saveForm, start, restart, resetScores } = { ...OVERLAY_MODES[mode], ...overrides };
   overlayLeaderboard.classList.toggle('hidden', !leaderboard);
   overlaySummary.classList.toggle('hidden', !summary);
   saveScoreForm.classList.toggle('hidden', !saveForm);
@@ -338,14 +349,7 @@ function endGame() {
   pendingEntry = { score, lines, maxCombo, maxLinesAtOnce };
   const qualifies = qualifiesForTop(score);
 
-  setOverlayButtons({
-    leaderboard: true,
-    summary: true,
-    saveForm: qualifies,
-    start: false,
-    restart: true,
-    resetScores: false,
-  });
+  setOverlayMode('gameover', { saveForm: qualifies });
   renderLeaderboard(null);
 
   if (qualifies) {
@@ -383,14 +387,7 @@ function showStartScreen() {
   overlayTitle.textContent = 'TETRIS';
   overlayScore.textContent = '';
 
-  setOverlayButtons({
-    leaderboard: true,
-    summary: true,
-    saveForm: false,
-    start: true,
-    restart: false,
-    resetScores: true,
-  });
+  setOverlayMode('start');
   renderLeaderboard(null);
   overlay.classList.remove('hidden');
 }
@@ -405,14 +402,7 @@ function togglePause() {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
-    setOverlayButtons({
-      leaderboard: false,
-      summary: false,
-      saveForm: false,
-      start: false,
-      restart: true,
-      resetScores: false,
-    });
+    setOverlayMode('pause');
     overlay.classList.remove('hidden');
   }
 }
@@ -430,6 +420,7 @@ function loop(ts) {
     }
   }
   draw();
+  if (gameOver) return; // lockPiece() above may have just triggered endGame()
   animId = requestAnimationFrame(loop);
 }
 
