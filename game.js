@@ -268,17 +268,22 @@ function loop(ts) {
   animId = requestAnimationFrame(loop);
 }
 
+const MIN_START_LEVEL = 1;
+const MAX_START_LEVEL = 15;
+
+function clampStartLevel(val) {
+  return (val >= MIN_START_LEVEL && val <= MAX_START_LEVEL) ? val : MIN_START_LEVEL;
+}
+
 function getSelectedStartLevel() {
-  const val = parseInt(startLevelSelect.value, 10);
-  return (val >= 1 && val <= 15) ? val : 1;
+  return clampStartLevel(parseInt(startLevelSelect.value, 10));
 }
 
 function loadStoredStartLevel() {
-  const stored = parseInt(localStorage.getItem(START_LEVEL_KEY), 10);
-  return (stored >= 1 && stored <= 15) ? stored : 1;
+  return clampStartLevel(parseInt(localStorage.getItem(START_LEVEL_KEY), 10));
 }
 
-for (let i = 1; i <= 15; i++) {
+for (let i = MIN_START_LEVEL; i <= MAX_START_LEVEL; i++) {
   const opt = document.createElement('option');
   opt.value = i;
   opt.textContent = i;
